@@ -120,7 +120,7 @@ def main():
                 text = message.get("text", "").strip()
 
                 # ===== START =====
-                if text == "/start":
+                if text.startswith("/start"):
                     send_message(
                         chat_id,
                         "⚡ *Main Menu*\n\nChoose an option below\n\n⚡ Powered by @ARSU_4X",
@@ -143,16 +143,16 @@ def main():
 
                     data = fetch_phone_data(text)
 
-                    # 🧹 DELETE LOADING MESSAGE
+                    # 🧹 delete loading
                     if loading_msg_id:
                         delete_message(chat_id, loading_msg_id)
 
-                    # ❌ NO DATA
+                    # ❌ no data
                     if data.get("error") == "no_data":
                         send_message(chat_id, "⚠️ No data found")
                         continue
 
-                    # ❌ SERVER ERROR
+                    # ❌ server error
                     if data.get("error") == "server":
                         send_message(
                             chat_id,
@@ -160,7 +160,7 @@ def main():
                         )
                         continue
 
-                    # ✅ SUCCESS JSON
+                    # ✅ success JSON
                     formatted = json.dumps(data, indent=2, ensure_ascii=False)
 
                     send_message(
@@ -169,7 +169,7 @@ def main():
                         parse_mode="HTML"
                     )
 
-                # ===== INVALID NUMBER =====
+                # ===== INVALID =====
                 else:
                     send_message(chat_id, "❌ Invalid mobile number")
 
