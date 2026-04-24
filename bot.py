@@ -123,7 +123,7 @@ def main():
                 if text.startswith("/start"):
                     send_message(
                         chat_id,
-                        "⚡ Main Menu\nChoose an option below\n⚡ Powered by @ARSU_4X",
+                        "👋 Welcome!\nClick button below to start lookup. Powered by @ARSU_4X",
                         main_keyboard(),
                         parse_mode="Markdown"
                     )
