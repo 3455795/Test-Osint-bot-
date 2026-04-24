@@ -87,7 +87,7 @@ def fetch_phone_data(phone):
         else:
             final_data.update(data)
 
-        # ===== BRANDING ADD =====
+        # ===== BRANDING =====
         final_data["processed_by"] = "@Arsu_4x"
         final_data["developer"] = "@OREOSELLER"
         final_data["owner_contact"] = "https://t.me/Arsu_4x"
@@ -95,24 +95,25 @@ def fetch_phone_data(phone):
 
         return final_data
 
-    except:
+    except Exception as e:
+        print("Fetch error:", e)
         return {"error": "server"}
 
 
 # ===== MAIN LOOP =====
 def main():
     offset = None
-    print("Bot started...")
+    print("🚀 Bot started...")
 
     while True:
         try:
             url = f"{BASE_URL}/getUpdates"
             params = {
-                "timeout": 100,
+                "timeout": 50,
                 "offset": offset
             }
 
-            response = requests.get(url, params=params, timeout=120).json()
+            response = requests.get(url, params=params, timeout=60).json()
 
             for update in response.get("result", []):
                 offset = update["update_id"] + 1
@@ -154,7 +155,7 @@ def main():
                     if "error" in data:
                         send_message(
                             chat_id,
-                            "⚠️ Server busy or API unreachable\nPlease try again later."
+                            "⚠️ Server busy or API error\nTry again later."
                         )
 
                     elif "nodata" in data:
@@ -178,11 +179,17 @@ def main():
                     send_message(chat_id, "❌ Invalid mobile number")
 
         except Exception as e:
-            print("Loop Error:", e)
+            print("Loop crash:", e)
+            time.sleep(5)  # auto-retry
 
         time.sleep(1)
 
 
 # ===== RUN =====
 if __name__ == "__main__":
-    main()
+    while True:
+        try:
+            main()
+        except Exception as e:
+            print("Main crash:", e)
+            time.sleep(10)
