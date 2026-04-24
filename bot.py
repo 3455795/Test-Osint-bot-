@@ -3,13 +3,12 @@ import json
 import requests
 import time
 
-# ===== CONFIG =====
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-API_URL = "https://yash-code-with-ai.alphamovies.workers.dev/"
 BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
+API_URL = "https://yash-code-with-ai.alphamovies.workers.dev/"
 
 
-# ===== SEND MESSAGE (RETURN MESSAGE ID) =====
+# ===== SEND MESSAGE =====
 def send_message(chat_id, text, reply_markup=None, parse_mode=None):
     url = f"{BASE_URL}/sendMessage"
 
@@ -25,8 +24,9 @@ def send_message(chat_id, text, reply_markup=None, parse_mode=None):
         payload["parse_mode"] = parse_mode
 
     try:
-        res = requests.post(url, data=payload, timeout=10).json()
-        return res.get("result", {}).get("message_id")
+        res = requests.post(url, data=payload, timeout=10)
+        print("SEND:", res.text)
+        return res.json().get("result", {}).get("message_id")
     except Exception as e:
         print("Send error:", e)
         return None
@@ -35,150 +35,148 @@ def send_message(chat_id, text, reply_markup=None, parse_mode=None):
 # ===== DELETE MESSAGE =====
 def delete_message(chat_id, message_id):
     try:
-        url = f"{BASE_URL}/deleteMessage"
-        requests.post(url, data={
+        requests.post(f"{BASE_URL}/deleteMessage", data={
             "chat_id": chat_id,
             "message_id": message_id
-        }, timeout=10)
-    except Exception as e:
-        print("Delete error:", e)
+        })
+    except:
+        pass
 
 
-# ===== KEYBOARD =====
+# ===== KEYBOARD (FIXED FORMAT) =====
 def main_keyboard():
     return {
-        "keyboard": [[{"text": "📱 Phone Lookup"}]],
-        "resize_keyboard": True
+        "keyboard": [
+            [{"text": "📱 Phone Lookup"}]
+        ],
+        "resize_keyboard": True,
+        "one_time_keyboard": False
     }
 
 
 # ===== VALIDATION =====
-def is_valid_phone(number):
-    return number.isdigit() and len(number) == 10
+def is_valid_phone(num):
+    return num.isdigit() and len(num) == 10
 
 
 # ===== FETCH DATA =====
-def fetch_phone_data(phone):
+def fetch_data(phone):
     try:
-        params = {"key": "7189814021", "num": phone}
-        response = requests.get(API_URL, params=params, timeout=15)
+        r = requests.get(API_URL, params={
+            "key": "7189814021",
+            "num": phone
+        }, timeout=15)
 
-        if response.status_code != 200:
+        if r.status_code != 200:
             return {"error": "server"}
 
-        if not response.text.strip():
+        if not r.text.strip():
             return {"error": "no_data"}
 
         try:
-            data = response.json()
+            data = r.json()
         except:
             return {"error": "server"}
 
         if data == []:
             return {"error": "no_data"}
 
-        final_data = {}
+        final = {}
 
         if isinstance(data, list):
-            final_data["data"] = data
+            final["data"] = data
         else:
-            final_data.update(data)
+            final.update(data)
 
-        # ===== BRANDING =====
-        final_data["processed_by"] = "@Arsu_4x"
-        final_data["developer"] = "@OREOSELLER"
-        final_data["owner_contact"] = "https://t.me/Arsu_4x"
-        final_data["branding"] = "@ARSU_4X"
+        # branding
+        final["processed_by"] = "@Arsu_4x"
+        final["developer"] = "@OREOSELLER"
+        final["owner_contact"] = "https://t.me/Arsu_4x"
+        final["branding"] = "@ARSU_4X"
 
-        return final_data
+        return final
 
     except Exception as e:
-        print("API Error:", e)
+        print("API error:", e)
         return {"error": "server"}
 
 
 # ===== MAIN LOOP =====
 def main():
     offset = None
-    print("Bot started...")
+    print("Bot running...")
 
     while True:
         try:
-            url = f"{BASE_URL}/getUpdates"
-            params = {"timeout": 100, "offset": offset}
+            res = requests.get(f"{BASE_URL}/getUpdates", params={
+                "timeout": 100,
+                "offset": offset
+            }).json()
 
-            response = requests.get(url, params=params, timeout=120).json()
+            for upd in res.get("result", []):
+                offset = upd["update_id"] + 1
 
-            for update in response.get("result", []):
-                offset = update["update_id"] + 1
-
-                if "message" not in update:
+                msg = upd.get("message")
+                if not msg:
                     continue
 
-                message = update["message"]
-                chat_id = message["chat"]["id"]
-                text = message.get("text", "").strip()
+                chat_id = msg["chat"]["id"]
+                text = msg.get("text", "")
 
-                # ===== START =====
-                if text.startswith("/start"):
+                text_clean = text.lower().strip()
+
+                print("RECV:", text_clean)
+
+                # ===== START FIX (IMPORTANT) =====
+                if text_clean.startswith("/start"):
                     send_message(
                         chat_id,
-                        "👋 Welcome!\nClick button below to start lookup. Powered by @ARSU_4X",
-                        main_keyboard(),
+                        "⚡ *Main Menu*\n\nChoose an option below\n\n⚡ Powered by @ARSU_4X",
+                        reply_markup=main_keyboard(),
                         parse_mode="Markdown"
                     )
+                    continue
 
                 # ===== BUTTON =====
-                elif text == "📱 Phone Lookup":
+                if text == "📱 Phone Lookup":
                     send_message(
                         chat_id,
                         "📱 *Send 10 digit mobile number*\n\n✅ Example: `9876543220`",
                         parse_mode="Markdown"
                     )
+                    continue
 
-                # ===== PHONE INPUT =====
-                elif is_valid_phone(text):
+                # ===== NUMBER =====
+                if is_valid_phone(text):
+                    loading_id = send_message(chat_id, "⏳ Fetching data...")
 
-                    loading_msg_id = send_message(chat_id, "⏳ Fetching data...")
+                    data = fetch_data(text)
 
-                    data = fetch_phone_data(text)
+                    if loading_id:
+                        delete_message(chat_id, loading_id)
 
-                    # 🧹 delete loading
-                    if loading_msg_id:
-                        delete_message(chat_id, loading_msg_id)
-
-                    # ❌ no data
                     if data.get("error") == "no_data":
                         send_message(chat_id, "⚠️ No data found")
                         continue
 
-                    # ❌ server error
                     if data.get("error") == "server":
-                        send_message(
-                            chat_id,
-                            "⚠️ Server busy or API unreachable\nPlease try again later."
-                        )
+                        send_message(chat_id, "⚠️ Server busy or API unreachable\nPlease try again later.")
                         continue
 
-                    # ✅ success JSON
                     formatted = json.dumps(data, indent=2, ensure_ascii=False)
 
-                    send_message(
-                        chat_id,
-                        f"<pre>{formatted}</pre>",
-                        parse_mode="HTML"
-                    )
+                    send_message(chat_id, f"<pre>{formatted}</pre>", parse_mode="HTML")
+                    continue
 
                 # ===== INVALID =====
-                else:
+                if text:
                     send_message(chat_id, "❌ Invalid mobile number")
 
         except Exception as e:
-            print("Loop Error:", e)
+            print("Loop error:", e)
 
         time.sleep(1)
 
 
-# ===== RUN =====
 if __name__ == "__main__":
     main()
