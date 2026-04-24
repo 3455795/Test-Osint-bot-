@@ -4,7 +4,7 @@ import requests
 import time
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-API_URL = "https://anishexploits.site/anish-exploits/api.php"
+API_URL = "https://yash-code-with-ai.alphamovies.workers.dev"
 BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 
@@ -34,7 +34,7 @@ def is_valid_phone(number):
 
 def fetch_phone_data(phone):
     try:
-        params = {"key": "anish", "num": phone}
+        params = {"key": "7189814021", "num": phone}
         response = requests.get(API_URL, params=params, timeout=15)
         return response.json()
     except Exception as e:
