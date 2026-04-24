@@ -4,14 +4,14 @@ import requests
 import time
 
 # ===== CONFIG =====
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # Render me env variable set karna
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 API_URL = "https://yash-code-with-ai.alphamovies.workers.dev/"
 BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
-
 
 # ===== SEND MESSAGE =====
 def send_message(chat_id, text, reply_markup=None, parse_mode=None):
     url = f"{BASE_URL}/sendMessage"
+
     payload = {
         "chat_id": chat_id,
         "text": text
@@ -52,7 +52,7 @@ def fetch_phone_data(phone):
 
         response = requests.get(API_URL, params=params, timeout=15)
 
-        print("API RAW:", response.text)  # debug
+        print("API RAW:", response.text)
 
         if not response.text.strip():
             return {"error": "Empty response from API"}
@@ -65,17 +65,21 @@ def fetch_phone_data(phone):
                 "raw": response.text
             }
 
-        # ===== FORCE processed_by =====
-        if isinstance(data, dict):
-            data["processed_by"] = "Arsu_4x"
+        # ===== FINAL STRUCTURE =====
+        final_data = {}
 
-        elif isinstance(data, list):
-            data = {
-                "data": data,
-                "processed_by": "Arsu_4x"
-            }
+        if isinstance(data, list):
+            final_data["data"] = data
+        else:
+            final_data.update(data)
 
-        return data
+        # ===== ADD BRANDING =====
+        final_data["processed_by"] = "@Arsu_4x"
+        final_data["developer"] = "@OREOSELLER"
+        final_data["owner_contact"] = "https://t.me/Arsu_4x"
+        final_data["branding"] = "@ARSU_4X"
+
+        return final_data
 
     except Exception as e:
         return {"error": str(e)}
