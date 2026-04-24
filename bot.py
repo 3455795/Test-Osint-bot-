@@ -3,10 +3,10 @@ import json
 import requests
 import time
 
+# ===== CONFIG =====
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 API_URL = "https://yash-code-with-ai.alphamovies.workers.dev/"
-
+BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 # ===== SEND MESSAGE =====
 def send_message(chat_id, text, reply_markup=None, parse_mode=None):
@@ -24,9 +24,8 @@ def send_message(chat_id, text, reply_markup=None, parse_mode=None):
         payload["parse_mode"] = parse_mode
 
     try:
-        res = requests.post(url, data=payload, timeout=10)
-        print("SEND:", res.text)
-        return res.json().get("result", {}).get("message_id")
+        res = requests.post(url, data=payload, timeout=10).json()
+        return res.get("result", {})
     except Exception as e:
         print("Send error:", e)
         return None
@@ -34,149 +33,156 @@ def send_message(chat_id, text, reply_markup=None, parse_mode=None):
 
 # ===== DELETE MESSAGE =====
 def delete_message(chat_id, message_id):
+    url = f"{BASE_URL}/deleteMessage"
     try:
-        requests.post(f"{BASE_URL}/deleteMessage", data={
+        requests.post(url, data={
             "chat_id": chat_id,
             "message_id": message_id
-        })
-    except:
-        pass
+        }, timeout=10)
+    except Exception as e:
+        print("Delete error:", e)
 
 
-# ===== KEYBOARD (FIXED FORMAT) =====
+# ===== KEYBOARD =====
 def main_keyboard():
     return {
-        "keyboard": [
-            [{"text": "📱 Phone Lookup"}]
-        ],
-        "resize_keyboard": True,
-        "one_time_keyboard": False
+        "keyboard": [[{"text": "📱 PHONE LOOKUP"}]],
+        "resize_keyboard": True
     }
 
 
 # ===== VALIDATION =====
-def is_valid_phone(num):
-    return num.isdigit() and len(num) == 10
+def is_valid_phone(number):
+    return number.isdigit() and len(number) == 10
 
 
 # ===== FETCH DATA =====
-def fetch_data(phone):
+def fetch_phone_data(phone):
     try:
-        r = requests.get(API_URL, params={
+        params = {
             "key": "7189814021",
             "num": phone
-        }, timeout=15)
+        }
 
-        if r.status_code != 200:
+        response = requests.get(API_URL, params=params, timeout=15)
+
+        if response.status_code != 200:
             return {"error": "server"}
 
-        if not r.text.strip():
-            return {"error": "no_data"}
+        if not response.text.strip():
+            return {"nodata": True}
 
         try:
-            data = r.json()
+            data = response.json()
         except:
             return {"error": "server"}
 
-        if data == []:
-            return {"error": "no_data"}
+        if not data or data == [] or data == {}:
+            return {"nodata": True}
 
-        final = {}
+        final_data = {}
 
         if isinstance(data, list):
-            final["data"] = data
+            final_data["data"] = data
         else:
-            final.update(data)
+            final_data.update(data)
 
-        # branding
-        final["processed_by"] = "@Arsu_4x"
-        final["developer"] = "@OREOSELLER"
-        final["owner_contact"] = "https://t.me/Arsu_4x"
-        final["branding"] = "@ARSU_4X"
+        # ===== BRANDING ADD =====
+        final_data["processed_by"] = "@Arsu_4x"
+        final_data["developer"] = "@OREOSELLER"
+        final_data["owner_contact"] = "https://t.me/Arsu_4x"
+        final_data["branding"] = "iG: @ITS_ARSU_077"
 
-        return final
+        return final_data
 
-    except Exception as e:
-        print("API error:", e)
+    except:
         return {"error": "server"}
 
 
 # ===== MAIN LOOP =====
 def main():
     offset = None
-    print("Bot running...")
+    print("Bot started...")
 
     while True:
         try:
-            res = requests.get(f"{BASE_URL}/getUpdates", params={
+            url = f"{BASE_URL}/getUpdates"
+            params = {
                 "timeout": 100,
                 "offset": offset
-            }).json()
+            }
 
-            for upd in res.get("result", []):
-                offset = upd["update_id"] + 1
+            response = requests.get(url, params=params, timeout=120).json()
 
-                msg = upd.get("message")
-                if not msg:
+            for update in response.get("result", []):
+                offset = update["update_id"] + 1
+
+                if "message" not in update:
                     continue
 
-                chat_id = msg["chat"]["id"]
-                text = msg.get("text", "")
+                message = update["message"]
+                chat_id = message["chat"]["id"]
+                text = message.get("text", "").strip()
 
-                text_clean = text.lower().strip()
-
-                print("RECV:", text_clean)
-
-                # ===== START FIX (IMPORTANT) =====
-                if text_clean.startswith("/start"):
+                # ===== START =====
+                if text == "/start":
                     send_message(
                         chat_id,
-                        "⚡ *Main Menu*\n\nChoose an option below\n\n⚡ Powered by @ARSU_4X",
-                        reply_markup=main_keyboard(),
-                        parse_mode="Markdown"
+                        "🥽 <b>Main Menu</b>\n\nChoose an option below\n\n⚡ Powered by @ARSU_4X",
+                        main_keyboard(),
+                        parse_mode="HTML"
                     )
-                    continue
 
                 # ===== BUTTON =====
-                if text == "📱 Phone Lookup":
+                elif text == "📱 PHONE LOOKUP":
                     send_message(
                         chat_id,
-                        "📱 *Send 10 digit mobile number*\n\n✅ Example: `9876543220`",
-                        parse_mode="Markdown"
+                        "📱 Send 10 digit mobile number\n\n✅ Example: <code>9876543220</code>",
+                        parse_mode="HTML"
                     )
-                    continue
 
-                # ===== NUMBER =====
-                if is_valid_phone(text):
-                    loading_id = send_message(chat_id, "⏳ Fetching data...")
+                # ===== PHONE INPUT =====
+                elif is_valid_phone(text):
+                    msg = send_message(chat_id, "⏳ Fetching data...")
+                    msg_id = msg.get("message_id") if msg else None
 
-                    data = fetch_data(text)
+                    data = fetch_phone_data(text)
 
-                    if loading_id:
-                        delete_message(chat_id, loading_id)
+                    if msg_id:
+                        delete_message(chat_id, msg_id)
 
-                    if data.get("error") == "no_data":
+                    if "error" in data:
+                        send_message(
+                            chat_id,
+                            "⚠️ Server busy or API unreachable\nPlease try again later."
+                        )
+
+                    elif "nodata" in data:
                         send_message(chat_id, "⚠️ No data found")
-                        continue
 
-                    if data.get("error") == "server":
-                        send_message(chat_id, "⚠️ Server busy or API unreachable\nPlease try again later.")
-                        continue
+                    else:
+                        formatted = json.dumps(
+                            data,
+                            indent=2,
+                            ensure_ascii=False
+                        )
 
-                    formatted = json.dumps(data, indent=2, ensure_ascii=False)
-
-                    send_message(chat_id, f"<pre>{formatted}</pre>", parse_mode="HTML")
-                    continue
+                        send_message(
+                            chat_id,
+                            f"<pre>{formatted}</pre>",
+                            parse_mode="HTML"
+                        )
 
                 # ===== INVALID =====
-                if text:
+                else:
                     send_message(chat_id, "❌ Invalid mobile number")
 
         except Exception as e:
-            print("Loop error:", e)
+            print("Loop Error:", e)
 
         time.sleep(1)
 
 
+# ===== RUN =====
 if __name__ == "__main__":
     main()
